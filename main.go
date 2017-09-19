@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
@@ -9,6 +10,13 @@ import (
 	"github.com/Djoulzy/Tools/clog"
 	"github.com/Djoulzy/Tools/config"
 	"github.com/valyala/fasthttp"
+)
+
+var (
+	synPrefix  = []byte("/syn/")
+	scanPrefix = []byte("/scan/")
+	artPrefix  = []byte("/art/")
+	icoPrefix  = []byte("/favicon.ico")
 )
 
 type Globals struct {
@@ -36,25 +44,76 @@ func handleError(ctx *fasthttp.RequestCtx, message string, status int) {
 	fmt.Fprintf(ctx, "%s\n", message)
 }
 
-func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+func sendBuffer(ctx *fasthttp.RequestCtx, buffer *bytes.Buffer) {
+	ctx.Write(buffer.Bytes())
+}
 
-	clog.Info("t413", "action", "GET %s", ctx.Path())
-	path := ctx.Path()
-	query := strings.Split(string(path[1:]), "/")
+func sendBinary(ctx *fasthttp.RequestCtx, filepath string) {
+	fasthttp.ServeFile(ctx, filepath)
+}
 
-	if len(query) < 2 {
-		handleError(ctx, "Bad Query", http.StatusNotFound)
+func sendLogo(ctx *fasthttp.RequestCtx) {
+	sendBinary(ctx, "./tmdb.png")
+}
+
+func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+	var year string
+	query := strings.Split(string(ctx.Path()[1:]), "/")
+	if len(query) < 3 {
+		handleError(ctx, "Bad Request", http.StatusNotFound)
 		return
 	}
+	if len(query) < 4 {
+		year = ""
+	} else {
+		year = query[3]
+	}
+	url, err := DB.GetArtwork(query[2], query[1], year)
+	if err != nil {
+		ctx.SetContentType("image/png")
+		sendLogo(ctx)
+	} else {
+		ctx.SetContentType("image/jpg")
+		sendBinary(ctx, url)
+	}
+}
 
-	switch query[0] {
-	case "favicon.ico":
+func synopsys(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+	var year string
+	query := strings.Split(string(ctx.Path()[1:]), "/")
+	if len(query) < 2 {
+		handleError(ctx, "Bad Request", http.StatusNotFound)
+		return
+	}
+	if len(query) < 3 {
+		year = ""
+	} else {
+		year = query[2]
+	}
+	url, err := DB.GetSynopsys(query[1], year)
+	if err != nil {
+		ctx.SetContentType("image/png")
+		ctx.Write([]byte("n/a"))
+	} else {
+		ctx.SetContentType("text/html")
+		sendBinary(ctx, url)
+	}
+}
+
+func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+	clog.Info("t413", "action", "GET %s", ctx.Path())
+	ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
+
+	path := ctx.Path()
+	switch {
+	case bytes.HasPrefix(path, synPrefix):
+		synopsys(ctx, DB)
+	case bytes.HasPrefix(path, scanPrefix):
+	case bytes.HasPrefix(path, artPrefix):
+		artworks(ctx, DB)
+	case bytes.HasPrefix(path, icoPrefix):
 		handleError(ctx, "Not found", http.StatusNotFound)
 		return
-	case "syn":
-		DB.GetSynopsys(ctx, query)
-	default:
-		DB.GetArtwork(ctx, query)
 	}
 }
 
