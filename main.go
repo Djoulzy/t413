@@ -153,6 +153,7 @@ func main() {
 	clog.StartLogging = appConfig.StartLogging
 
 	// ScanDir.MakePrettyName("Transformers.The.Last.Knight.2017.MULTI.1080p.WEB-DL.H264.WwW.Zone-Telechargement.Ws.mkv")
+	// ScanDir.MakePrettyName("Alibi.com (2017) 1080p TRUEFRENCH x264 DTS - JiHeff.mkv")
 	// return
 
 	myDB := MovieDB.Init(appConfig)
