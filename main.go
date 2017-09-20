@@ -43,6 +43,10 @@ func (A AppConfig) GetCacheDir() string {
 	return A.CacheDir
 }
 
+func (A AppConfig) GetPrefixDir() string {
+	return A.PrefixDir
+}
+
 func handleError(ctx *fasthttp.RequestCtx, message string, status int) {
 	ctx.SetStatusCode(status)
 	fmt.Fprintf(ctx, "%s\n", message)
@@ -112,7 +116,7 @@ func scandir(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	rep := ScanDir.Start(appConfig.PrefixDir, strings.Join(query[1:], "/"))
+	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"))
 	ctx.SetContentType("application/json")
 	sendBuffer(ctx, rep)
 }
@@ -147,6 +151,9 @@ func main() {
 	config.Load("t413.ini", appConfig)
 	clog.LogLevel = appConfig.LogLevel
 	clog.StartLogging = appConfig.StartLogging
+
+	// ScanDir.MakePrettyName("Transformers.The.Last.Knight.2017.MULTI.1080p.WEB-DL.H264.WwW.Zone-Telechargement.Ws.mkv")
+	// return
 
 	myDB := MovieDB.Init(appConfig)
 
