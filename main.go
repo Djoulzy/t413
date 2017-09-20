@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Djoulzy/MovieDB"
+	"github.com/Djoulzy/ScanDir"
 	"github.com/Djoulzy/Tools/clog"
 	"github.com/Djoulzy/Tools/config"
 	"github.com/valyala/fasthttp"
@@ -25,11 +26,14 @@ type Globals struct {
 	HTTP_addr    string
 	TMDB_Key     string
 	CacheDir     string
+	PrefixDir    string
 }
 
 type AppConfig struct {
 	Globals
 }
+
+var appConfig *AppConfig
 
 func (A AppConfig) GetTMDBKey() string {
 	return A.TMDB_Key
@@ -44,8 +48,8 @@ func handleError(ctx *fasthttp.RequestCtx, message string, status int) {
 	fmt.Fprintf(ctx, "%s\n", message)
 }
 
-func sendBuffer(ctx *fasthttp.RequestCtx, buffer *bytes.Buffer) {
-	ctx.Write(buffer.Bytes())
+func sendBuffer(ctx *fasthttp.RequestCtx, buffer []byte) {
+	ctx.Write(buffer)
 }
 
 func sendBinary(ctx *fasthttp.RequestCtx, filepath string) {
@@ -100,6 +104,19 @@ func synopsys(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	}
 }
 
+func scandir(ctx *fasthttp.RequestCtx) {
+	// orderby := string(ctx.QueryArgs().Peek("orderby"))
+	query := strings.Split(string(ctx.Path()[1:]), "/")
+	if len(query) < 2 {
+		handleError(ctx, "Bad Request", http.StatusNotFound)
+		return
+	}
+
+	rep := ScanDir.Start(appConfig.PrefixDir, strings.Join(query[1:], "/"))
+	ctx.SetContentType("application/json")
+	sendBuffer(ctx, rep)
+}
+
 func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	clog.Info("t413", "action", "GET %s", ctx.Path())
 	ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
@@ -109,6 +126,7 @@ func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	case bytes.HasPrefix(path, synPrefix):
 		synopsys(ctx, DB)
 	case bytes.HasPrefix(path, scanPrefix):
+		scandir(ctx)
 	case bytes.HasPrefix(path, artPrefix):
 		artworks(ctx, DB)
 	case bytes.HasPrefix(path, icoPrefix):
@@ -118,7 +136,7 @@ func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 }
 
 func main() {
-	appConfig := &AppConfig{
+	appConfig = &AppConfig{
 		Globals{
 			LogLevel:     5,
 			StartLogging: true,
