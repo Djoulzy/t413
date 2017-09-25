@@ -116,7 +116,9 @@ func scandir(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"))
+	orderby := string(ctx.QueryArgs().Peek("orderby"))
+	asc := (string(ctx.QueryArgs().Peek("desc")) == "")
+	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"), orderby, asc)
 	ctx.SetContentType("application/json")
 	sendBuffer(ctx, rep)
 }
