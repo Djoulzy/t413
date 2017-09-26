@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Djoulzy/MovieDB"
@@ -118,7 +119,10 @@ func scandir(ctx *fasthttp.RequestCtx) {
 
 	orderby := string(ctx.QueryArgs().Peek("orderby"))
 	asc := (string(ctx.QueryArgs().Peek("desc")) == "")
-	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"), orderby, asc)
+	pagenum, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("p")))
+	nbperpage, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("nb")))
+
+	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"), orderby, asc, pagenum, nbperpage)
 	ctx.SetContentType("application/json")
 	sendBuffer(ctx, rep)
 }
