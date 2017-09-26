@@ -35,6 +35,11 @@ type AppConfig struct {
 }
 
 var appConfig *AppConfig
+var myDB *MovieDB.MDB
+
+func (A AppConfig) GetHTTPAddr() string {
+	return A.HTTP_addr
+}
 
 func (A AppConfig) GetTMDBKey() string {
 	return A.TMDB_Key
@@ -122,7 +127,7 @@ func scandir(ctx *fasthttp.RequestCtx) {
 	pagenum, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("p")))
 	nbperpage, _ := strconv.Atoi(string(ctx.QueryArgs().Peek("nb")))
 
-	rep := ScanDir.Start(appConfig, strings.Join(query[1:], "/"), orderby, asc, pagenum, nbperpage)
+	rep := ScanDir.Start(appConfig, myDB, strings.Join(query[1:], "/"), orderby, asc, pagenum, nbperpage)
 	ctx.SetContentType("application/json")
 	sendBuffer(ctx, rep)
 }
@@ -162,7 +167,7 @@ func main() {
 	// ScanDir.MakePrettyName("Alibi.com (2017) 1080p TRUEFRENCH x264 DTS - JiHeff.mkv")
 	// return
 
-	myDB := MovieDB.Init(appConfig)
+	myDB = MovieDB.Init(appConfig)
 
 	clog.Info("t413", "Start", "HTTP Listening on %s", appConfig.HTTP_addr)
 	err := fasthttp.ListenAndServe(appConfig.HTTP_addr, func(ctx *fasthttp.RequestCtx) { action(ctx, myDB) })
