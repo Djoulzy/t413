@@ -15,10 +15,11 @@ import (
 )
 
 var (
-	synPrefix  = []byte("/syn/")
-	scanPrefix = []byte("/scan/")
-	artPrefix  = []byte("/art/")
-	icoPrefix  = []byte("/favicon.ico")
+	synPrefix   = []byte("/syn/")
+	infosPrefix = []byte("/infos/")
+	scanPrefix  = []byte("/scan/")
+	artPrefix   = []byte("/art/")
+	icoPrefix   = []byte("/favicon.ico")
 )
 
 type Globals struct {
@@ -71,46 +72,55 @@ func sendLogo(ctx *fasthttp.RequestCtx) {
 }
 
 func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
-	var year string
 	query := strings.Split(string(ctx.Path()[1:]), "/")
-	if len(query) < 3 {
-		handleError(ctx, "Bad Request", http.StatusNotFound)
-		return
+	if len(query) == 3 {
+		url, err := DB.GetArtwork(query[1], query[2])
+		if err == nil {
+			ctx.SetContentType("image/jpg")
+			sendBinary(ctx, url)
+			return
+		}
 	}
-	if len(query) < 4 {
-		year = ""
-	} else {
-		year = query[3]
-	}
-	url, err := DB.GetArtwork(query[2], query[1], year)
-	if err != nil {
-		ctx.SetContentType("image/png")
-		sendLogo(ctx)
-	} else {
-		ctx.SetContentType("image/jpg")
-		sendBinary(ctx, url)
-	}
+	ctx.SetContentType("image/png")
+	sendLogo(ctx)
 }
 
-func synopsys(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
-	var year string
+// func synopsys(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+// 	var year string
+// 	query := strings.Split(string(ctx.Path()[1:]), "/")
+// 	if len(query) < 2 {
+// 		handleError(ctx, "Bad Request", http.StatusNotFound)
+// 		return
+// 	}
+// 	if len(query) < 3 {
+// 		year = ""
+// 	} else {
+// 		year = query[2]
+// 	}
+// 	url, err := DB.GetSynopsys(query[1], year)
+// 	if err != nil {
+// 		ctx.SetContentType("image/png")
+// 		ctx.Write([]byte("n/a"))
+// 	} else {
+// 		ctx.SetContentType("text/html")
+// 		sendBinary(ctx, url)
+// 	}
+// }
+
+func movieinfos(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	query := strings.Split(string(ctx.Path()[1:]), "/")
 	if len(query) < 2 {
 		handleError(ctx, "Bad Request", http.StatusNotFound)
 		return
 	}
-	if len(query) < 3 {
-		year = ""
-	} else {
-		year = query[2]
-	}
-	url, err := DB.GetSynopsys(query[1], year)
+
+	url, err := DB.GetMovieInfos(query[1])
 	if err != nil {
-		ctx.SetContentType("image/png")
+		ctx.SetContentType("text/plain")
 		ctx.Write([]byte("n/a"))
 	} else {
-		ctx.SetContentType("text/html")
-		sendBinary(ctx, url)
+		ctx.SetContentType("application/json")
+		sendBuffer(ctx, url)
 	}
 }
 
@@ -138,8 +148,10 @@ func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 
 	path := ctx.Path()
 	switch {
-	case bytes.HasPrefix(path, synPrefix):
-		synopsys(ctx, DB)
+	// case bytes.HasPrefix(path, synPrefix):
+	// 	synopsys(ctx, DB)
+	case bytes.HasPrefix(path, infosPrefix):
+		movieinfos(ctx, DB)
 	case bytes.HasPrefix(path, scanPrefix):
 		scandir(ctx)
 	case bytes.HasPrefix(path, artPrefix):
