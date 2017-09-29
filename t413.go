@@ -15,11 +15,13 @@ import (
 )
 
 var (
-	synPrefix   = []byte("/syn/")
-	infosPrefix = []byte("/infos/")
-	scanPrefix  = []byte("/scan/")
-	artPrefix   = []byte("/art/")
-	icoPrefix   = []byte("/favicon.ico")
+	synPrefix    = []byte("/syn/")
+	staticPrefix = []byte("/static/")
+	icoPrefix    = []byte("/ico/")
+	infosPrefix  = []byte("/infos/")
+	scanPrefix   = []byte("/scan/")
+	artPrefix    = []byte("/art/")
+	favicoPrefix = []byte("/favicon.ico")
 )
 
 type Globals struct {
@@ -64,11 +66,12 @@ func sendBuffer(ctx *fasthttp.RequestCtx, buffer []byte) {
 }
 
 func sendBinary(ctx *fasthttp.RequestCtx, filepath string) {
-	fasthttp.ServeFile(ctx, filepath)
+	fasthttp.ServeFileUncompressed(ctx, filepath)
 }
 
 func sendLogo(ctx *fasthttp.RequestCtx) {
-	sendBinary(ctx, "./tmdb.png")
+	ctx.SetContentType("image/png")
+	sendBinary(ctx, "./icons/tmdb.png")
 }
 
 func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
@@ -81,31 +84,21 @@ func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 			return
 		}
 	}
-	ctx.SetContentType("image/png")
 	sendLogo(ctx)
 }
 
-// func synopsys(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
-// 	var year string
-// 	query := strings.Split(string(ctx.Path()[1:]), "/")
-// 	if len(query) < 2 {
-// 		handleError(ctx, "Bad Request", http.StatusNotFound)
-// 		return
-// 	}
-// 	if len(query) < 3 {
-// 		year = ""
-// 	} else {
-// 		year = query[2]
-// 	}
-// 	url, err := DB.GetSynopsys(query[1], year)
-// 	if err != nil {
-// 		ctx.SetContentType("image/png")
-// 		ctx.Write([]byte("n/a"))
-// 	} else {
-// 		ctx.SetContentType("text/html")
-// 		sendBinary(ctx, url)
-// 	}
-// }
+func icoserve(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+	query := strings.Split(string(ctx.Path()[1:]), "/")
+	ico := fmt.Sprintf("./icons/%s", query[1])
+	ctx.SetContentType("image/png")
+	sendBinary(ctx, ico)
+}
+
+func staticserve(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
+	path := strings.Replace(string(ctx.Path()), "/static", "", 1)
+	// file := fmt.Sprintf("./icons/%s.png", query[1])
+	sendBinary(ctx, path)
+}
 
 func movieinfos(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	query := strings.Split(string(ctx.Path()[1:]), "/")
@@ -152,11 +145,15 @@ func action(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	// 	synopsys(ctx, DB)
 	case bytes.HasPrefix(path, infosPrefix):
 		movieinfos(ctx, DB)
+	case bytes.HasPrefix(path, staticPrefix):
+		staticserve(ctx, DB)
+	case bytes.HasPrefix(path, icoPrefix):
+		icoserve(ctx, DB)
 	case bytes.HasPrefix(path, scanPrefix):
 		scandir(ctx)
 	case bytes.HasPrefix(path, artPrefix):
 		artworks(ctx, DB)
-	case bytes.HasPrefix(path, icoPrefix):
+	case bytes.HasPrefix(path, favicoPrefix):
 		handleError(ctx, "Not found", http.StatusNotFound)
 		return
 	}
