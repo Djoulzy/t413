@@ -31,6 +31,7 @@ type Globals struct {
 	TMDB_Key     string
 	CacheDir     string
 	PrefixDir    string
+	IconDir      string
 }
 
 type AppConfig struct {
@@ -71,7 +72,8 @@ func sendBinary(ctx *fasthttp.RequestCtx, filepath string) {
 
 func sendLogo(ctx *fasthttp.RequestCtx) {
 	ctx.SetContentType("image/png")
-	sendBinary(ctx, "./icons/tmdb.png")
+	path := fmt.Sprintf("%s/tmdb.png", appConfig.IconDir)
+	sendBinary(ctx, path)
 }
 
 func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
@@ -89,7 +91,7 @@ func artworks(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 
 func icoserve(ctx *fasthttp.RequestCtx, DB *MovieDB.MDB) {
 	query := strings.Split(string(ctx.Path()[1:]), "/")
-	ico := fmt.Sprintf("./icons/%s", query[1])
+	ico := fmt.Sprintf("%s/%s", appConfig.IconDir, query[1])
 	ctx.SetContentType("image/png")
 	sendBinary(ctx, ico)
 }
